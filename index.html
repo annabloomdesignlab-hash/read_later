@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Read Later Board</title>
+<style>
+:root {
+--bg: #F6F4F0;
+--card-bg: #FFFFFF;
+--accent: #E8553A;
+--accent-light: #FFF0ED;
+--text: #1A1A1A;
+--text-secondary: #6B6B6B;
+--border: #E8E4DE;
+--shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+--shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+--shadow-lg: 0 12px 40px rgba(0,0,0,0.12);
+--radius: 12px;
+--radius-sm: 8px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+background: var(--bg);
+color: var(--text);
+min-height: 100vh;
+overflow-x: hidden;
+}
+
+.header {
+padding: 32px 40px 24px;
+display: flex;
+align-items: center;
+justify-content: space-between;
+flex-wrap: wrap;
+gap: 16px;
+}
+
+.header-left h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+.header-left p { font-size: 14px; color: var(--text-secondary); margin-top: 2px; }
+.header-actions { display: flex; gap: 10px; align-items: center; }
+
+.search-container { position: relative; width: 340px; }
+.search-container svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); pointer-events: none; }
+.search-input {
+width: 100%; padding: 10px 14px 10px 42px;
+border: 1.5px solid var(--border); border-radius: 10px;
+font-size: 14px; font-family: inherit; background: var(--card-bg);
+color: var(--text); transition: border-color 0.2s, box-shadow 0.2s; outline: none;
+}
+.search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(232,85,58,0.1); }
+.search-input::placeholder { color: #B0ACA6; }
+
+.btn-add {
+display: flex; align-items: center; gap: 6px;
+padding: 10px 18px; background: var(--accent); color: white;
+border: none; border-radius: 10px; font-size: 14px;
+font-weight: 600; font-family: inherit; cursor: pointer;
+transition: background 0.2s, transform 0.1s;
+}
+.btn-add:hover { background: #D44A32; }
+.btn-add:active { transform: scale(0.97); }
+
+.view-toggle {
+display: flex; background: var(--card-bg);
+border: 1.5px solid var(--border); border-radius: 10px; overflow: hidden;
+}
+.view-btn {
+padding: 8px 14px; border: none; background: transparent;
+cursor: pointer; color: var(--text-secondary);
+transition: all 0.2s; display: flex; align-items: center;
+}
+.view-btn.active { background: var(--accent); color: white; }
+
+.stats-bar {
+padding: 0 40px 8px; display: flex; gap: 20px;
+font-size: 13px; color: var(--text-secondary);
+}
+.stats-bar span strong { color: var(--text); font-weight: 600; }
+
+/* FOLDER TABS */
+.folder-tabs { padding: 8px 40px 0; display: flex; gap: 8px; flex-wrap: wrap; }
+.folder-tab {
+padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 500;
+border: 1.5px solid var(--border); background: var(--card-bg);
+color: var(--text-secondary); cursor: pointer; transition: all 0.2s;
+font-family: inherit; display: flex; align-items: center; gap: 6px;
+}
+.folder-tab:hover { border-color: #ccc; }
+.folder-tab.active { border-color: transparent; color: white; }
+.folder-tab .count {
+background: rgba(0,0,0,0.08); padding: 1px 7px;
+border-radius: 10px; font-size: 11px; font-weight: 600;
+}
+.folder-tab.active .count { background: rgba(255,255,255,0.25); }
+
+/* SUBFOLDER ROWS (collapsible) */
+.subfolder-section {
+margin-bottom: 8px;
+}
+
+.subfolder-header {
+display: flex;
+align-items: center;
+gap: 10px;
+padding: 10px 0;
+cursor: pointer;
+user-select: none;
+border-bottom: 1px solid var(--border);
+margin-bottom: 12px;
+transition: opacity 0.15s;
+}
+
+.subfolder-header:hover { opacity: 0.75; }
+
+.subfolder-chevron {
+width: 20px;
+height: 20px;
+display: flex;
+align-items: center;
+justify-content: center;
+transition: transform 0.25s ease;
+color: var(--text-secondary);
+flex-shrink: 0;
+}
+
+.subfolder-header.collapsed .subfolder-chevron {
+transform: rotate(-90deg);
+}
+
+.subfolder-name {
+font-size: 14px;
+font-weight: 600;
+color: var(--text);
+}
+
+.subfolder-count {
+font-size: 12px;
+color: var(--text-secondary);
+font-weight: 400;
+}
+
+.subfolder-line {
+flex: 1;
+height: 1px;
+background: var(--border);
+margin-left: 4px;
+}
+
+.subfolder-body {
+overflow: hidden;
+transition: max-height 0.3s ease, opacity 0.25s ease;
+max-height: 2000px;
+opacity: 1;
+}
+
+.subfolder-body.collapsed {
+max-height: 0;
+opacity: 0;
+margin-bottom: 0;
+}
+
+.subfolder-body .grid {
+display: grid;
+grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+gap: 16px;
+margin-bottom: 20px;
+}
+
+.subfolder-body .list {
+display: flex;
+flex-direction: column;
+gap: 8px;
+margin-bottom: 20px;
+}
+
+.content { padding: 20px 40px 80px; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.list { display: flex; flex-direction: column; gap: 8px; }
+
+.card {
+background: var(--card-bg); border-radius: var(--radius);
+border: 1.5px solid var(--border); padding: 18px 20px;
+transition: all 0.2s; cursor: default; position: relative;
+animation: cardIn 0.3s ease both;
+}
+@keyframes cardIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.card:hover { border-color: #d0ccc6; box-shadow: var(--shadow-md); }
+
+.card-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.card-topic {
+display: inline-flex; align-items: center; gap: 5px;
+font-size: 11px; font-weight: 600; text-transform: uppercase;
+letter-spacing: 0.5px; padding: 3px 10px; border-radius: 6px;
+}
+.card-subfolder {
+display: inline-flex; align-items: center;
+font-size: 11px; font-weight: 500; padding: 3px 10px;
+border-radius: 6px; border: 1px solid var(--border); color: var(--text-secondary);
+}
+
+.card-title {
+font-size: 15px; font-weight: 600; line-height: 1.4; margin-bottom: 6px;
+display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.card-title a { color: inherit; text-decoration: none; }
+.card-title a:hover { color: var(--accent); }
+
+.card-url {
+font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;
+white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.card-description {
+font-size: 13px; color: var(--text-secondary); line-height: 1.5;
+display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+overflow: hidden; margin-bottom: 10px;
+}
+
+.card-meta { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #AAA; }
+.card-actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.2s; }
+.card:hover .card-actions { opacity: 1; }
+
+.card-action-btn {
+width: 28px; height: 28px; border: none; background: transparent;
+border-radius: 6px; cursor: pointer; color: var(--text-secondary);
+display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+}
+.card-action-btn:hover { background: #f0ede8; color: var(--accent); }
+.card-action-btn.read-toggle.is-read { color: var(--accent); }
+
+.list .card { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 16px; padding: 14px 20px; }
+.list .card-tags { margin-bottom: 0; }
+.list .card-body { min-width: 0; }
+.list .card-title { margin-bottom: 2px; -webkit-line-clamp: 1; }
+.list .card-url { margin-bottom: 0; }
+.list .card-description { display: none; }
+.list .card-actions { opacity: 1; }
+.list .card-subfolder { display: none; }
+
+/* MODAL */
+.modal-overlay {
+position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+backdrop-filter: blur(4px); z-index: 1000; display: none;
+align-items: center; justify-content: center; animation: fadeIn 0.2s ease;
+}
+.modal-overlay.visible { display: flex; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.modal {
+background: var(--card-bg); border-radius: 16px; padding: 32px;
+width: 480px; max-width: 92vw; box-shadow: var(--shadow-lg);
+animation: modalIn 0.25s ease;
+}
+@keyframes modalIn { from { opacity: 0; transform: translateY(12px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+.modal h2 { font-size: 20px; font-weight: 700; margin-bottom: 20px; }
+.modal label { display: block; font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; margin-top: 14px; }
+.modal label:first-of-type { margin-top: 0; }
+.modal input, .modal textarea, .modal select {
+width: 100%; padding: 10px 14px; border: 1.5px solid var(--border);
+border-radius: var(--radius-sm); font-size: 14px; font-family: inherit;
+outline: none; transition: border-color 0.2s; background: var(--bg);
+}
+.modal select {
+width: 100%; padding: 10px 14px; border: 1.5px solid var(--border);
+border-radius: var(--radius-sm); font-size: 14px; font-family: inherit;
+outline: none; transition: border-color 0.2s; background: var(--bg);
+appearance: none; -webkit-appearance: none;
+background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%236B6B6B' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+background-repeat: no-repeat;
+background-position: right 14px center;
+padding-right: 36px;
+cursor: pointer;
+}
+.modal select:focus { border-color: var(--accent); }
+
+.folder-select-row {
+display: flex; gap: 8px; align-items: center;
+}
+.folder-select-row select { flex: 1; }
+.folder-dot {
+width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+}
+.modal textarea { resize: vertical; min-height: 60px; }
+
+.modal-buttons { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+.btn-cancel {
+padding: 10px 20px; border: 1.5px solid var(--border); border-radius: 10px;
+background: transparent; font-size: 14px; font-family: inherit;
+cursor: pointer; color: var(--text-secondary); font-weight: 500;
+}
+.btn-save {
+padding: 10px 24px; border: none; border-radius: 10px;
+background: var(--accent); color: white; font-size: 14px;
+font-weight: 600; font-family: inherit; cursor: pointer; transition: background 0.2s;
+}
+.btn-save:hover { background: #D44A32; }
+
+.url-row { display: flex; gap: 8px; }
+.url-row input { flex: 1; }
+.btn-fetch {
+padding: 10px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+background: var(--card-bg); font-size: 13px; font-family: inherit;
+cursor: pointer; color: var(--text-secondary); font-weight: 500;
+white-space: nowrap; transition: all 0.2s;
+}
+.btn-fetch:hover { border-color: var(--accent); color: var(--accent); }
+.btn-fetch.loading { pointer-events: none; opacity: 0.6; }
+
+.subfolder-input-row { display: flex; gap: 8px; align-items: center; }
+.subfolder-input-row input { flex: 1; }
+.auto-badge {
+font-size: 10px; font-weight: 600; text-transform: uppercase;
+color: var(--accent); letter-spacing: 0.5px; padding: 2px 6px;
+background: var(--accent-light); border-radius: 4px; white-space: nowrap;
+}
+
+.empty-state { text-align: center; padding: 80px 20px; color: var(--text-secondary); }
+.empty-state svg { margin-bottom: 16px; opacity: 0.4; }
+.empty-state h3 { font-size: 18px; color: var(--text); margin-bottom: 6px; }
+.empty-state p { font-size: 14px; }
+
+.search-hint {
+background: var(--accent-light); border: 1px solid #f5d0c7;
+border-radius: var(--radius-sm); padding: 12px 16px; margin-bottom: 16px;
+font-size: 13px; color: var(--accent); display: none; align-items: center; gap: 8px;
+}
+.search-hint.visible { display: flex; }
+.search-hint strong { font-weight: 600; }
+
+.toast {
+position: fixed; bottom: 60px; left: 50%;
+transform: translateX(-50%) translateY(20px);
+background: var(--text); color: white; padding: 10px 20px;
+border-radius: 10px; font-size: 14px; font-weight: 500;
+opacity: 0; transition: all 0.3s; z-index: 2000; pointer-events: none;
+}
+.toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+@media (max-width: 700px) {
+.header { padding: 16px 16px 12px; flex-direction: column; align-items: stretch; }
+.header-left { margin-bottom: 4px; }
+.header-left h1 { font-size: 24px; }
+.header-actions { flex-wrap: wrap; }
+.search-container { width: 100%; order: 1; }
+.view-toggle { order: 2; }
+.btn-add { order: 3; flex: 1; justify-content: center; }
+.folder-tabs { padding: 8px 16px 0; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.folder-tabs::-webkit-scrollbar { display: none; }
+.folder-tab { white-space: nowrap; flex-shrink: 0; }
+.content { padding: 16px 16px 100px; }
+.stats-bar { padding: 0 16px 8px; }
+.grid { grid-template-columns: 1fr; gap: 12px; }
+.list .card { grid-template-columns: auto 1fr auto; }
+.list .card-meta { display: none; }
+.card { padding: 14px 16px; }
+.card-actions { opacity: 1; }
+.card-title { font-size: 14px; }
+.subfolder-header { padding: 8px 0; }
+.modal { padding: 24px 20px; border-radius: 14px; }
+.modal h2 { font-size: 18px; margin-bottom: 16px; }
+
+/* Floating add button for mobile */
+.fab-add {
+position: fixed;
+bottom: 70px;
+right: 20px;
+width: 56px;
+height: 56px;
+border-radius: 50%;
+background: var(--accent);
+color: white;
+border: none;
+box-shadow: 0 4px 16px rgba(232,85,58,0.35);
+display: flex;
+align-items: center;
+justify-content: center;
+cursor: pointer;
+z-index: 100;
+transition: transform 0.2s, box-shadow 0.2s;
+}
+.fab-add:active { transform: scale(0.92); }
+}
+
+@media (min-width: 701px) {
+.fab-add { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+<div class="header-left">
+<h1>Read Later</h1>
+<p>Your links, organized by topic</p>
+</div>
+<div class="header-actions">
+<div class="search-container">
+<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+<input type="text" class="search-input" id="searchInput" placeholder="Search by idea, keyword, or topic...">
+</div>
+<div class="view-toggle">
+<button class="view-btn active" data-view="grid" title="Grid view">
+<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+</button>
+<button class="view-btn" data-view="list" title="List view">
+<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+</button>
+</div>
+<button class="btn-add" id="btnAdd">
+<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+Add Link
+</button>
+</div>
+</div>
+
+<div class="stats-bar" id="statsBar"></div>
+<div class="folder-tabs" id="folderTabs"></div>
+
+<div class="content">
+<div class="search-hint" id="searchHint">
+<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+<span id="searchHintText"></span>
+</div>
+<div id="cardContainer"></div>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-overlay" id="addModal">
+<div class="modal">
+<h2 id="modalTitle">Save a Link</h2>
+<label>URL *</label>
+<div class="url-row">
+<input type="url" id="inputUrl" placeholder="https://example.com/article">
+<button class="btn-fetch" id="btnFetch" title="Fetch title from URL">Fetch title</button>
+</div>
+<label>Title</label>
+<input type="text" id="inputTitle" placeholder="Auto-generated from URL or type your own">
+<label>Description / Notes</label>
+<textarea id="inputDesc" placeholder="What's this about?"></textarea>
+<label>Folder <span class="auto-badge">auto</span></label>
+<div class="folder-select-row">
+<span class="folder-dot" id="folderDot"></span>
+<select id="inputFolder">
+<option value="auto">Auto-detect</option>
+<option value="ai">AI for Designers</option>
+<option value="jobs">Jobs</option>
+<option value="designtips">Design Tips</option>
+<option value="other">Other</option>
+</select>
+</div>
+<label>Subfolder <span class="auto-badge">auto</span></label>
+<div class="subfolder-input-row">
+<input type="text" id="inputSubfolder" placeholder="Auto-assigned or type your own (e.g. Prompt Engineering)">
+</div>
+<div class="modal-buttons">
+<button class="btn-cancel" id="btnCancel">Cancel</button>
+<button class="btn-save" id="btnSave">Save</button>
+</div>
+</div>
+</div>
+
+<!-- Floating add button for mobile -->
+<button class="fab-add" id="fabAdd" title="Add Link">
+<svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+</button>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── TOPICS (your 3 main categories + Other) ──
+// Classification priority: AI for Designers > Jobs > Design Tips > Other
+const TOPICS = {
+ai: {
+label: 'AI for Designers', color: '#7C3AED', bg: '#F5F3FF',
+// Checked FIRST — catches anything AI/LLM related for design work
+keywords: ['ai','artificial intelligence','llm','gpt','claude','anthropic','openai','chatgpt','gemini','copilot','cursor','midjourney','dall-e','dalle','stable diffusion','prompt','prompting','prompt engineering','machine learning','deep learning','neural','transformer','diffusion','generative ai','generative','ai tool','ai design','ai workflow','ai assistant','v0','vercel ai','figma ai','adobe firefly','firefly','ai image','ai prototype','ai code','ai ux','ai ui','ai writing','agent','ai agent','rag','fine-tune','embedding','copilot','github copilot','windsurf','cline','bolt','lovable','replit']
+},
+jobs: {
+label: 'Jobs', color: '#059669', bg: '#ECFDF5',
+keywords: ['job','jobs','job post','job posting','hiring','we are hiring','career','careers','apply','application','resume','cv','portfolio','interview','job opening','position','vacancy','role','opportunity','opportunities','work with us','join us','join our team','looking for','seeking','designer role','ux role','ui role','product designer','senior designer','junior designer','lead designer','freelance','contract','remote job','remote position','full-time','part-time','internship','intern','job board','linkedin job','glassdoor','indeed','dribbble job','behance job','salary','compensation','offer','recruiter','recruiting','talent','job search','open role','open position']
+},
+designtips: {
+label: 'Design Tips', color: '#EC4899', bg: '#FDF2F8',
+keywords: ['design','ui','ux','figma','typography','layout','branding','logo','illustration','color','colour','palette','graphic','visual','interface','wireframe','prototype','user experience','user interface','sketch','adobe','photoshop','animation','motion','creative','accessibility','responsive','font','icon','svg','3d','render','design system','component library','pattern','grid','spacing','hierarchy','contrast','whitespace','white space','alignment','consistency','usability','heuristic','interaction design','visual design','information architecture','design principle','design pattern','design thinking','material design','ios design','human interface','card design','form design','navigation','mobile design','web design','dark mode','design token','style guide','atomic design','micro interaction','onboarding','empty state','error state','loading state','button','input','modal','dropdown','tooltip','notification','toast','table','data visualization','dashboard','landing page','design inspiration','dribbble','behance','awwwards','design resource','design tool','sketch plugin','figma plugin']
+}
+};
+
+// ── SUBFOLDER CLASSIFIER ──
+const SUBFOLDER_RULES = {
+ai: [
+{ label: 'Claude', keywords: ['claude','anthropic','claude ai','sonnet','opus','haiku','claude code','artifacts'] },
+{ label: 'ChatGPT', keywords: ['chatgpt','openai','gpt','gpt-4','gpt-5','dall-e','dalle','sora','openai api'] },
+{ label: 'Cursor', keywords: ['cursor','cursor ai','cursor ide','cursor editor','cursor tab','cursor composer'] },
+{ label: 'Midjourney', keywords: ['midjourney','mj','midjourney prompt','midjourney style','midjourney v6','midjourney v7'] },
+{ label: 'Figma AI', keywords: ['figma ai','figma generate','figma automate','figma plugin ai','figma copilot'] },
+{ label: 'Stable Diffusion', keywords: ['stable diffusion','sd','comfyui','automatic1111','sdxl','controlnet','lora'] },
+{ label: 'AI Prototyping', keywords: ['v0','vercel ai','bolt','lovable','replit','ai prototype','ai code','ai website','ai generate ui','ai mockup'] },
+{ label: 'AI Workflows', keywords: ['ai workflow','ai process','ai pipeline','ai automation','prompt engineering','prompting','agent','ai agent','ai tool'] },
+{ label: 'Copilot', keywords: ['copilot','github copilot','windsurf','cline','ai coding','ai pair'] },
+],
+jobs: [
+{ label: 'Job Posts', keywords: ['job post','job posting','hiring','we are hiring','job opening','position','vacancy','role','open role','open position','apply','opportunity'] },
+{ label: 'Portfolio', keywords: ['portfolio','case study','portfolio review','portfolio tips','portfolio site','portfolio design','showcase','project presentation'] },
+{ label: 'Interview Prep', keywords: ['interview','whiteboard','design challenge','take home','design exercise','interview question','interview tips','behavioral'] },
+{ label: 'Resume & CV', keywords: ['resume','cv','cover letter','linkedin','profile','application','applying'] },
+{ label: 'Freelance', keywords: ['freelance','contract','independent','client','freelancer','self-employed','consultant','consulting','side project','gig'] },
+{ label: 'Salary & Negotiation', keywords: ['salary','compensation','negotiate','negotiation','offer','pay','equity','benefits','levels.fyi','glassdoor salary'] },
+],
+designtips: [
+{ label: 'UI Patterns', keywords: ['ui pattern','design pattern','component','card','form','navigation','modal','dropdown','tooltip','table','dashboard','layout pattern','ui element','ui component'] },
+{ label: 'Colors', keywords: ['color','colour','palette','contrast','gradient','hue','saturation','color theory','color scheme','color system','dark mode','light mode','brand color'] },
+{ label: 'Typography', keywords: ['typography','font','typeface','type scale','line height','letter spacing','font pairing','font size','heading','body text','readability','legibility'] },
+{ label: 'Spacing & Layout', keywords: ['spacing','grid','layout','whitespace','white space','alignment','padding','margin','responsive','breakpoint','auto layout','flexbox','gap'] },
+{ label: 'Design Systems', keywords: ['design system','component library','tokens','style guide','atomic design','pattern library','design tokens','figma library'] },
+{ label: 'UX & Usability', keywords: ['ux','usability','user research','user testing','heuristic','accessibility','a11y','wcag','inclusive design','user flow','persona','journey map','information architecture'] },
+{ label: 'Interaction & Motion', keywords: ['animation','motion','micro interaction','transition','hover','gesture','scroll','parallax','loading','skeleton','lottie','spring'] },
+{ label: 'Inspiration', keywords: ['inspiration','dribbble','behance','awwwards','gallery','showcase','trend','redesign','concept','exploration'] },
+]
+};
+
+function classifyTopic(text) {
+const lower = text.toLowerCase();
+let best = 'other', bestScore = 0;
+for (const [key, topic] of Object.entries(TOPICS)) {
+let score = 0;
+for (const kw of topic.keywords) {
+if (lower.includes(kw)) score += kw.includes(' ') ? 3 : 1;
+}
+if (score > bestScore) { bestScore = score; best = key; }
+}
+return best;
+}
+
+function classifySubfolder(text, topic) {
+const rules = SUBFOLDER_RULES[topic];
+if (!rules) return '';
+const lower = text.toLowerCase();
+let best = '', bestScore = 0;
+for (const rule of rules) {
+let score = 0;
+for (const kw of rule.keywords) {
+if (lower.includes(kw)) score += kw.includes(' ') ? 3 : 1;
+}
+if (score > bestScore) { bestScore = score; best = rule.label; }
+}
+return bestScore >= 1 ? best : '';
+}
+
+function getTopicStyle(topic) {
+if (TOPICS[topic]) return { label: TOPICS[topic].label, color: TOPICS[topic].color, bg: TOPICS[topic].bg };
+return { label: 'Other', color: '#6B7280', bg: '#F3F4F6' };
+}
+
+// ── DATA ──
+const STORAGE_KEY = 'readLaterBoard_v3';
+
+function loadLinks() {
+try {
+let data = JSON.parse(localStorage.getItem(STORAGE_KEY));
+if (data && data.length) return data;
+// Migrate from older versions — reclassify into new topics
+for (const oldKey of ['readLaterBoard_v2', 'readLaterBoard']) {
+let old = JSON.parse(localStorage.getItem(oldKey));
+if (old && old.length) {
+old.forEach(l => {
+const combined = `${l.url} ${l.title} ${l.description || ''}`;
+l.topic = classifyTopic(combined);
+l.subfolder = classifySubfolder(combined, l.topic);
+});
+saveLinks(old);
+return old;
+}
+}
+return getSampleData();
+} catch { return getSampleData(); }
+}
+
+function saveLinks(data) { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+
+function getSampleData() {
+return [
+// AI for Designers
+{ id: 1, url: 'https://docs.anthropic.com/claude/prompt-engineering', title: 'Claude Prompt Engineering for Design Workflows', description: 'How to write effective prompts for generating UI copy, design specs, and creative briefs with Claude.', topic: 'ai', subfolder: 'Claude', added: '2026-04-10', read: false },
+{ id: 2, url: 'https://www.cursor.com/blog/designers-guide', title: 'Cursor for Designers: Build Prototypes Faster', description: 'How designers can use Cursor to go from Figma mockups to working code without switching context.', topic: 'ai', subfolder: 'Cursor', added: '2026-04-09', read: false },
+{ id: 3, url: 'https://openai.com/blog/chatgpt-design-tips', title: 'Using ChatGPT to Speed Up Your Design Process', description: 'Practical tips for using ChatGPT to generate copy, user personas, and design briefs.', topic: 'ai', subfolder: 'ChatGPT', added: '2026-04-08', read: false },
+{ id: 4, url: 'https://midjourney.com/docs/prompting-guide', title: 'Midjourney Prompting Guide for UI Designers', description: 'How to craft Midjourney prompts that produce usable design assets and mood boards.', topic: 'ai', subfolder: 'Midjourney', added: '2026-04-07', read: true },
+{ id: 5, url: 'https://v0.dev/blog/ai-prototyping', title: 'From Idea to Prototype in Minutes with v0', description: 'Using Vercel v0 to generate React components from natural language descriptions.', topic: 'ai', subfolder: 'AI Prototyping', added: '2026-04-06', read: false },
+
+// Jobs
+{ id: 6, url: 'https://www.linkedin.com/jobs/view/product-designer-spotify', title: 'Product Designer at Spotify (Remote)', description: 'Senior product designer role. Focus on mobile experience and design systems. Remote-friendly.', topic: 'jobs', subfolder: 'Job Posts', added: '2026-04-09', read: false },
+{ id: 7, url: 'https://dribbble.com/jobs/figma-senior-designer', title: 'Senior Designer at Figma', description: 'Looking for a senior designer to work on editor features and collaboration tools.', topic: 'jobs', subfolder: 'Job Posts', added: '2026-04-08', read: false },
+{ id: 8, url: 'https://www.uxportfolioformula.com/tips', title: '10 Portfolio Tips That Actually Get You Hired', description: 'What hiring managers look for in design portfolios and how to structure case studies.', topic: 'jobs', subfolder: 'Portfolio', added: '2026-04-05', read: false },
+
+// Design Tips
+{ id: 9, url: 'https://www.refactoringui.com/previews/color-tips', title: '7 Practical Tips for Better Colors in UI', description: 'How to pick, combine, and apply colors that make your interfaces feel polished and intentional.', topic: 'designtips', subfolder: 'Colors', added: '2026-04-09', read: false },
+{ id: 10, url: 'https://www.nngroup.com/articles/mental-models/', title: 'Mental Models and UX Design', description: 'How users\u2019 mental models shape interface expectations and design decisions.', topic: 'designtips', subfolder: 'UX & Usability', added: '2026-04-08', read: false },
+{ id: 11, url: 'https://bradfrost.com/blog/post/design-systems-2024/', title: 'The State of Design Systems in 2024', description: 'Brad Frost on where design systems are heading and common pitfalls to avoid.', topic: 'designtips', subfolder: 'Design Systems', added: '2026-04-07', read: false },
+{ id: 12, url: 'https://typescale.com/blog/perfect-type-scale', title: 'How to Build a Perfect Type Scale', description: 'A step-by-step guide to creating harmonious typography systems for web and mobile.', topic: 'designtips', subfolder: 'Typography', added: '2026-04-06', read: true },
+
+// Other
+{ id: 13, url: 'https://hubermanlab.com/sleep-toolkit', title: 'Huberman Sleep Toolkit', description: 'Protocols for optimizing sleep quality based on neuroscience research.', topic: 'other', subfolder: '', added: '2026-04-04', read: false },
+{ id: 14, url: 'https://ofdollarsanddata.com/how-to-invest', title: 'Just Keep Buying: Investing Basics', description: 'A data-driven guide to building long-term wealth through consistent investing.', topic: 'other', subfolder: '', added: '2026-04-03', read: true },
+];
+}
+
+let links = loadLinks();
+let currentView = 'grid';
+let activeFolder = 'all';
+let searchQuery = '';
+let editingId = null;
+
+// ── AUTO-TITLE FETCH ──
+async function fetchTitleFromUrl(url) {
+try {
+const corsProxy = 'https://api.allorigins.win/get?url=';
+const res = await fetch(corsProxy + encodeURIComponent(url));
+const data = await res.json();
+if (data.contents) {
+const match = data.contents.match(/<title[^>]*>([^<]+)<\/title>/i);
+if (match) return match[1].trim().replace(/&amp;/g,'&').replace(/&#39;/g,"'").replace(/&quot;/g,'"').replace(/&lt;/g,'<').replace(/&gt;/g,'>');
+}
+} catch {}
+
+// Fallback: generate a smart title from the URL path
+return generateTitleFromUrl(url);
+}
+
+function generateTitleFromUrl(url) {
+try {
+const u = new URL(url);
+const parts = u.pathname.split('/').filter(Boolean);
+if (parts.length === 0) return u.hostname.replace('www.','');
+
+// Use the last meaningful path segment
+let slug = parts[parts.length - 1];
+// Remove file extensions
+slug = slug.replace(/\.\w+$/, '');
+// Convert slug to title
+return slug
+.replace(/[-_]/g, ' ')
+.replace(/\b\w/g, c => c.toUpperCase())
+.substring(0, 80);
+} catch { return ''; }
+}
+
+// ── SMART SEARCH ──
+function smartSearch(query, items) {
+if (!query.trim()) return items;
+const q = query.toLowerCase().trim();
+const qWords = q.split(/\s+/);
+
+const synonyms = {
+'prompt': ['prompt engineering','prompting','claude','gpt','llm','ai','chatgpt'],
+'tool': ['cursor','figma','midjourney','chatgpt','claude','v0','copilot','ai tool'],
+'generate': ['ai','generative','midjourney','stable diffusion','dall-e','ai image'],
+'code': ['cursor','copilot','github copilot','windsurf','cline','ai code','programming'],
+'prototype': ['v0','lovable','bolt','ai prototype','figma','wireframe'],
+'image': ['midjourney','dall-e','stable diffusion','ai image','illustration','asset'],
+'work': ['job','jobs','career','hiring','role','position','opportunity'],
+'hire': ['job','hiring','recruiter','career','role','apply','open position'],
+'apply': ['job','application','resume','cv','portfolio','interview'],
+'career': ['job','hiring','role','salary','growth','portfolio','interview'],
+'money': ['salary','compensation','pay','freelance','contract','negotiate'],
+'remote': ['remote job','remote position','work from home','distributed'],
+'color': ['colour','palette','contrast','gradient','hue','saturation','color theory'],
+'font': ['typography','typeface','type scale','font pairing','letter spacing'],
+'layout': ['grid','spacing','whitespace','alignment','responsive','auto layout'],
+'button': ['ui pattern','component','cta','form','input','interaction'],
+'look': ['design','visual','ui','inspiration','aesthetic','beautiful','style'],
+'pretty': ['design','beautiful','aesthetic','visual','ui','inspiration'],
+'animate': ['animation','motion','micro interaction','transition','lottie'],
+'accessible': ['accessibility','a11y','wcag','inclusive design','contrast'],
+'system': ['design system','component library','tokens','style guide','atomic design'],
+'research': ['ux','user research','usability','testing','interview','persona'],
+};
+
+const expandedTerms = new Set(qWords);
+for (const w of qWords) {
+if (synonyms[w]) synonyms[w].forEach(s => expandedTerms.add(s));
+for (const [key, topic] of Object.entries(TOPICS)) {
+if (topic.label.toLowerCase() === w || topic.keywords.some(kw => kw === w)) {
+expandedTerms.add(key);
+expandedTerms.add(topic.label.toLowerCase());
+}
+}
+}
+
+return items.map(item => {
+const text = `${item.title} ${item.description} ${item.url} ${item.topic} ${item.subfolder || ''} ${getTopicStyle(item.topic).label}`.toLowerCase();
+let score = 0;
+for (const w of qWords) { if (text.includes(w)) score += 10; }
+for (const t of expandedTerms) { if (text.includes(t)) score += 3; }
+const topicLabel = getTopicStyle(item.topic).label.toLowerCase();
+if (expandedTerms.has(topicLabel) || expandedTerms.has(item.topic)) score += 5;
+return { ...item, score };
+}).filter(item => item.score > 0).sort((a, b) => b.score - a.score);
+}
+
+// ── RENDER HELPERS ──
+function getDomain(url) { try { return new URL(url).hostname.replace('www.', ''); } catch { return url; } }
+
+function formatDate(dateStr) {
+const d = new Date(dateStr); const now = new Date();
+const diff = Math.floor((now - d) / 86400000);
+if (diff === 0) return 'Today';
+if (diff === 1) return 'Yesterday';
+if (diff < 7) return `${diff}d ago`;
+return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function escapeHtml(str) {
+return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── RENDER ──
+function renderStats() {
+const readCount = links.filter(l => l.read).length;
+const unread = links.length - readCount;
+const topicCount = new Set(links.map(l => l.topic)).size;
+document.getElementById('statsBar').innerHTML = `
+<span><strong>${links.length}</strong> links saved</span>
+<span><strong>${unread}</strong> unread</span>
+<span><strong>${topicCount}</strong> topics</span>
+`;
+}
+
+function renderFolderTabs() {
+const counts = { all: links.length };
+for (const link of links) counts[link.topic] = (counts[link.topic] || 0) + 1;
+
+const tabs = document.getElementById('folderTabs');
+let html = `<button class="folder-tab ${activeFolder === 'all' ? 'active' : ''}" data-folder="all" style="${activeFolder === 'all' ? 'background:#1A1A1A;color:white;border-color:transparent;' : ''}">All <span class="count">${counts.all}</span></button>`;
+for (const [key, topic] of Object.entries(TOPICS)) {
+if (!counts[key]) continue;
+const isActive = activeFolder === key;
+html += `<button class="folder-tab ${isActive ? 'active' : ''}" data-folder="${key}" style="${isActive ? `background:${topic.color};` : ''}">${topic.label} <span class="count">${counts[key]}</span></button>`;
+}
+if (counts['other']) {
+html += `<button class="folder-tab ${activeFolder === 'other' ? 'active' : ''}" data-folder="other" style="${activeFolder === 'other' ? 'background:#6B7280;' : ''}">Other <span class="count">${counts['other']}</span></button>`;
+}
+tabs.innerHTML = html;
+
+tabs.querySelectorAll('.folder-tab').forEach(btn => {
+btn.addEventListener('click', () => {
+activeFolder = btn.dataset.folder;
+render();
+});
+});
+}
+
+// Track collapsed state per subfolder
+const collapsedSubfolders = new Set();
+
+function renderCards() {
+let filtered = activeFolder === 'all' ? [...links] : links.filter(l => l.topic === activeFolder);
+
+if (searchQuery) {
+filtered = smartSearch(searchQuery, filtered);
+const hint = document.getElementById('searchHint');
+const hintText = document.getElementById('searchHintText');
+hint.classList.add('visible');
+hintText.innerHTML = `Found <strong>${filtered.length}</strong> link${filtered.length !== 1 ? 's' : ''} matching "<strong>${escapeHtml(searchQuery)}</strong>"`;
+} else {
+document.getElementById('searchHint').classList.remove('visible');
+}
+
+const container = document.getElementById('cardContainer');
+
+if (filtered.length === 0) {
+container.innerHTML = `
+<div class="empty-state">
+<svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2z"/><path d="M9 9h.01M15 9h.01M8 14s1.5 2 4 2 4-2 4-2"/></svg>
+<h3>${searchQuery ? 'No matches found' : 'No links here yet'}</h3>
+<p>${searchQuery ? 'Try different keywords or a broader idea' : 'Add your first link to get started'}</p>
+</div>`;
+return;
+}
+
+// Should we group by subfolder? Only when a specific topic tab is active (not "all" or "other")
+const shouldGroup = activeFolder !== 'all' && activeFolder !== 'other' && !searchQuery;
+
+if (shouldGroup) {
+// Group cards by subfolder
+const groups = {};
+filtered.forEach(link => {
+const sf = link.subfolder || 'Uncategorized';
+if (!groups[sf]) groups[sf] = [];
+groups[sf].push(link);
+});
+
+// Sort groups by count (largest first), but keep "Uncategorized" last
+const sortedGroups = Object.entries(groups).sort((a, b) => {
+if (a[0] === 'Uncategorized') return 1;
+if (b[0] === 'Uncategorized') return -1;
+return b[1].length - a[1].length;
+});
+
+const topicStyle = getTopicStyle(activeFolder);
+let cardIndex = 0;
+
+container.innerHTML = sortedGroups.map(([sf, sfLinks]) => {
+const isCollapsed = collapsedSubfolders.has(`${activeFolder}:${sf}`);
+const cardsHtml = sfLinks.map((link, i) => {
+const style = getTopicStyle(link.topic);
+cardIndex++;
+return renderSingleCard(link, style, cardIndex);
+}).join('');
+
+return `
+<div class="subfolder-section">
+<div class="subfolder-header ${isCollapsed ? 'collapsed' : ''}" data-sf-key="${activeFolder}:${escapeHtml(sf)}">
+<span class="subfolder-chevron">
+<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+</span>
+<span class="subfolder-name" style="color:${topicStyle.color}">${escapeHtml(sf)}</span>
+<span class="subfolder-count">${sfLinks.length} link${sfLinks.length !== 1 ? 's' : ''}</span>
+<span class="subfolder-line"></span>
+</div>
+<div class="subfolder-body ${isCollapsed ? 'collapsed' : ''}">
+<div class="${currentView}">
+${cardsHtml}
+</div>
+</div>
+</div>`;
+}).join('');
+} else {
+// Flat view (All tab, Other tab, or search results)
+container.innerHTML = `<div class="${currentView}">${filtered.map((link, i) => {
+const style = getTopicStyle(link.topic);
+return renderSingleCard(link, style, i);
+}).join('')}</div>`;
+}
+
+// Bind subfolder collapse toggles
+container.querySelectorAll('.subfolder-header').forEach(header => {
+header.addEventListener('click', () => {
+const key = header.dataset.sfKey;
+const body = header.nextElementSibling;
+if (collapsedSubfolders.has(key)) {
+collapsedSubfolders.delete(key);
+header.classList.remove('collapsed');
+body.classList.remove('collapsed');
+} else {
+collapsedSubfolders.add(key);
+header.classList.add('collapsed');
+body.classList.add('collapsed');
+}
+});
+});
+
+// Bind card actions
+container.querySelectorAll('.edit-btn').forEach(btn => {
+btn.addEventListener('click', (e) => { e.stopPropagation(); openEditModal(parseInt(btn.dataset.id)); });
+});
+container.querySelectorAll('.read-toggle').forEach(btn => {
+btn.addEventListener('click', (e) => {
+e.stopPropagation();
+const link = links.find(l => l.id === parseInt(btn.dataset.id));
+if (link) { link.read = !link.read; saveLinks(links); render(); showToast(link.read ? 'Marked as read' : 'Marked as unread'); }
+});
+});
+container.querySelectorAll('.delete-btn').forEach(btn => {
+btn.addEventListener('click', (e) => {
+e.stopPropagation();
+links = links.filter(l => l.id !== parseInt(btn.dataset.id));
+saveLinks(links); render(); showToast('Link removed');
+});
+});
+}
+
+function renderSingleCard(link, style, i) {
+return `
+<div class="card" style="animation-delay: ${i * 0.04}s">
+<div class="card-tags">
+<span class="card-topic" style="color:${style.color};background:${style.bg}">${style.label}</span>
+${link.subfolder ? `<span class="card-subfolder">${escapeHtml(link.subfolder)}</span>` : ''}
+</div>
+<div class="card-body">
+<div class="card-title"><a href="${escapeHtml(link.url)}" target="_blank" rel="noopener">${escapeHtml(link.title)}</a></div>
+<div class="card-url">${getDomain(link.url)}</div>
+<div class="card-description">${escapeHtml(link.description || '')}</div>
+</div>
+<div class="card-meta">
+<span>${formatDate(link.added)}</span>
+<div class="card-actions">
+<button class="card-action-btn edit-btn" data-id="${link.id}" title="Edit">
+<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+</button>
+<button class="card-action-btn read-toggle ${link.read ? 'is-read' : ''}" data-id="${link.id}" title="${link.read ? 'Mark unread' : 'Mark as read'}">
+<svg width="16" height="16" fill="${link.read ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>
+</button>
+<button class="card-action-btn delete-btn" data-id="${link.id}" title="Delete">
+<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+</button>
+</div>
+</div>
+</div>`;
+}
+
+function render() {
+renderStats();
+renderFolderTabs();
+renderCards();
+}
+
+// ── MODAL ──
+function openAddModal() {
+editingId = null;
+document.getElementById('modalTitle').textContent = 'Save a Link';
+document.getElementById('inputUrl').value = '';
+document.getElementById('inputUrl').disabled = false;
+document.getElementById('inputTitle').value = '';
+document.getElementById('inputDesc').value = '';
+document.getElementById('inputFolder').value = 'auto';
+updateFolderDot();
+document.getElementById('inputSubfolder').value = '';
+document.getElementById('btnSave').textContent = 'Save';
+document.getElementById('addModal').classList.add('visible');
+document.querySelector('.url-row').style.display = 'flex';
+setTimeout(() => document.getElementById('inputUrl').focus(), 100);
+}
+
+function openEditModal(id) {
+const link = links.find(l => l.id === id);
+if (!link) return;
+editingId = id;
+document.getElementById('modalTitle').textContent = 'Edit Link';
+document.getElementById('inputUrl').value = link.url;
+document.getElementById('inputUrl').disabled = false;
+document.getElementById('inputTitle').value = link.title;
+document.getElementById('inputDesc').value = link.description || '';
+document.getElementById('inputFolder').value = link.topic;
+updateFolderDot();
+document.getElementById('inputSubfolder').value = link.subfolder || '';
+document.getElementById('btnSave').textContent = 'Update';
+document.getElementById('addModal').classList.add('visible');
+document.querySelector('.url-row').style.display = 'flex';
+setTimeout(() => document.getElementById('inputTitle').focus(), 100);
+}
+
+function updateFolderDot() {
+const val = document.getElementById('inputFolder').value;
+const dot = document.getElementById('folderDot');
+if (val === 'auto') {
+dot.style.background = '#B0ACA6';
+} else {
+const style = getTopicStyle(val);
+dot.style.background = style.color;
+}
+}
+
+function closeModal() {
+document.getElementById('addModal').classList.remove('visible');
+editingId = null;
+}
+
+function handleSave() {
+const url = document.getElementById('inputUrl').value.trim();
+if (!url) { document.getElementById('inputUrl').style.borderColor = '#EF4444'; return; }
+
+const title = document.getElementById('inputTitle').value.trim() || getDomain(url);
+const desc = document.getElementById('inputDesc').value.trim();
+const combined = `${url} ${title} ${desc}`;
+
+// Use manual folder selection, or auto-detect
+const folderVal = document.getElementById('inputFolder').value;
+const topic = folderVal === 'auto' ? classifyTopic(combined) : folderVal;
+
+const manualSubfolder = document.getElementById('inputSubfolder').value.trim();
+const subfolder = manualSubfolder || classifySubfolder(combined, topic);
+
+if (editingId) {
+// Update existing
+const link = links.find(l => l.id === editingId);
+if (link) {
+link.url = url.startsWith('http') ? url : 'https://' + url;
+link.title = title;
+link.description = desc;
+link.topic = topic;
+link.subfolder = subfolder;
+saveLinks(links);
+closeModal();
+render();
+showToast('Link updated');
+}
+} else {
+// Create new
+const newLink = {
+id: Date.now(),
+url: url.startsWith('http') ? url : 'https://' + url,
+title, description: desc, topic, subfolder,
+added: new Date().toISOString().slice(0, 10),
+read: false,
+};
+links.unshift(newLink);
+saveLinks(links);
+closeModal();
+render();
+showToast(`Saved to ${getTopicStyle(topic).label}${subfolder ? ' / ' + subfolder : ''}`);
+}
+}
+
+// ── TOAST ──
+function showToast(msg) {
+const toast = document.getElementById('toast');
+toast.textContent = msg;
+toast.classList.add('visible');
+clearTimeout(showToast._t);
+showToast._t = setTimeout(() => toast.classList.remove('visible'), 2200);
+}
+
+// ── EVENTS ──
+document.getElementById('searchInput').addEventListener('input', (e) => { searchQuery = e.target.value; renderCards(); });
+
+document.querySelectorAll('.view-btn').forEach(btn => {
+btn.addEventListener('click', () => {
+document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+btn.classList.add('active');
+currentView = btn.dataset.view;
+renderCards();
+});
+});
+
+document.getElementById('btnAdd').addEventListener('click', openAddModal);
+document.getElementById('btnCancel').addEventListener('click', closeModal);
+document.getElementById('addModal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeModal(); });
+document.getElementById('btnSave').addEventListener('click', handleSave);
+document.getElementById('inputFolder').addEventListener('change', updateFolderDot);
+
+// Fetch title button
+document.getElementById('btnFetch').addEventListener('click', async () => {
+const url = document.getElementById('inputUrl').value.trim();
+if (!url) return;
+const btn = document.getElementById('btnFetch');
+btn.classList.add('loading');
+btn.textContent = 'Fetching...';
+const fullUrl = url.startsWith('http') ? url : 'https://' + url;
+const title = await fetchTitleFromUrl(fullUrl);
+if (title) {
+document.getElementById('inputTitle').value = title;
+// Also auto-classify subfolder from title
+const topic = classifyTopic(`${fullUrl} ${title}`);
+const sf = classifySubfolder(`${fullUrl} ${title}`, topic);
+if (sf && !document.getElementById('inputSubfolder').value.trim()) {
+document.getElementById('inputSubfolder').value = sf;
+}
+}
+btn.classList.remove('loading');
+btn.textContent = 'Fetch title';
+});
+
+// Auto-fetch when URL field loses focus
+document.getElementById('inputUrl').addEventListener('blur', async () => {
+const url = document.getElementById('inputUrl').value.trim();
+const titleField = document.getElementById('inputTitle');
+if (url && !titleField.value.trim() && !editingId) {
+const fullUrl = url.startsWith('http') ? url : 'https://' + url;
+const title = await fetchTitleFromUrl(fullUrl);
+if (title && !titleField.value.trim()) {
+titleField.value = title;
+const topic = classifyTopic(`${fullUrl} ${title}`);
+const sf = classifySubfolder(`${fullUrl} ${title}`, topic);
+if (sf && !document.getElementById('inputSubfolder').value.trim()) {
+document.getElementById('inputSubfolder').value = sf;
+}
+}
+}
+});
+
+document.addEventListener('keydown', (e) => {
+if (e.key === 'Escape') closeModal();
+if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); document.getElementById('searchInput').focus(); }
+});
+
+// FAB for mobile
+document.getElementById('fabAdd').addEventListener('click', openAddModal);
+
+// ── URL PARAMETER QUICK-ADD ──
+// Supports: ?url=https://...&title=...&desc=...
+// Use case: share a link from any mobile app by appending to the board URL
+function handleUrlParams() {
+const params = new URLSearchParams(window.location.search);
+const urlParam = params.get('url');
+if (!urlParam) return;
+
+const titleParam = params.get('title') || '';
+const descParam = params.get('desc') || params.get('text') || '';
+
+// Clean the URL from the address bar so refreshing won't re-add
+window.history.replaceState({}, '', window.location.pathname);
+
+// Check if this URL is already saved
+const existing = links.find(l => l.url === urlParam);
+if (existing) {
+showToast('Link already saved');
+return;
+}
+
+// Auto-classify and save
+const combined = `${urlParam} ${titleParam} ${descParam}`;
+const topic = classifyTopic(combined);
+const subfolder = classifySubfolder(combined, topic);
+const title = titleParam || generateTitleFromUrl(urlParam);
+
+const newLink = {
+id: Date.now(),
+url: urlParam,
+title: title,
+description: descParam,
+topic,
+subfolder,
+added: new Date().toISOString().slice(0, 10),
+read: false,
+};
+
+links.unshift(newLink);
+saveLinks(links);
+render();
+
+const topicLabel = getTopicStyle(topic).label;
+showToast(`Saved to ${topicLabel}${subfolder ? ' / ' + subfolder : ''}`);
+}
+
+// Init
+handleUrlParams();
+render();
+</script>
+</body>
+</html>
